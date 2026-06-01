@@ -23,3 +23,37 @@
 	<queue>
 	"Paquete.h"
 
+1780297333 source:c:\users\alan\desktop\unla sistemas\programación concurrente\t.p\programacion-concurrente-tp-2026-f9834f9cf10062cef9e96123df32907651c9b0ee\main.cpp
+	<iostream>
+	"WaitingQueue.h"
+	"ProcessingQueue.h"
+
+1780299142 c:\users\alan\desktop\unla sistemas\programación concurrente\t.p\programacion-concurrente-tp-2026-f9834f9cf10062cef9e96123df32907651c9b0ee\waitingqueue.h
+	"Paquete.h"
+	<queue>
+	<chrono>
+
+1780300764 c:\users\alan\desktop\unla sistemas\programación concurrente\t.p\programacion-concurrente-tp-2026-f9834f9cf10062cef9e96123df32907651c9b0ee\paquete.h
+	<chrono>
+
+1780300829 source:c:\users\alan\desktop\unla sistemas\programación concurrente\t.p\programacion-concurrente-tp-2026-f9834f9cf10062cef9e96123df32907651c9b0ee\paquete.cpp
+	"Paquete.h"
+
+1780299200 source:c:\users\alan\desktop\unla sistemas\programación concurrente\t.p\programacion-concurrente-tp-2026-f9834f9cf10062cef9e96123df32907651c9b0ee\waitingqueue.cpp
+	"WaitingQueue.h"
+
+1780298296 source:c:\users\alan\desktop\unla sistemas\programación concurrente\t.p\programacion-concurrente-tp-2026-f9834f9cf10062cef9e96123df32907651c9b0ee\semaforo.cpp
+	"Semaforo.h"
+	<iostream>
+
+1780297695 c:\users\alan\desktop\unla sistemas\programación concurrente\t.p\programacion-concurrente-tp-2026-f9834f9cf10062cef9e96123df32907651c9b0ee\semaforo.h
+	<mutex>
+	<condition_variable>
+
+1780300441 c:\users\alan\desktop\unla sistemas\programación concurrente\t.p\programacion-concurrente-tp-2026-f9834f9cf10062cef9e96123df32907651c9b0ee\processingqueue.h
+	<queue>
+	"Paquete.h"
+
+1780300441 source:c:\users\alan\desktop\unla sistemas\programación concurrente\t.p\programacion-concurrente-tp-2026-f9834f9cf10062cef9e96123df32907651c9b0ee\processingqueue.cpp
+	"ProcessingQueue.h"
+

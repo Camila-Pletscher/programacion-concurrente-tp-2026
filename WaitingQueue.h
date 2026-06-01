@@ -1,9 +1,8 @@
 #ifndef WAITINGQUEUE_H
 #define WAITINGQUEUE_H
-
-#include <queue>
 #include "Paquete.h"
-
+#include <queue>
+#include <chrono>
 class WaitingQueue
 {
 private:
@@ -16,6 +15,7 @@ public:
     bool hayPaquetesAlta() const;
     bool hayPaquetesBaja() const;
 
+    bool hayPaquetePromovido() const;
     Paquete obtenerSiguientePaquete();
 
     int cantidadAlta() const;
