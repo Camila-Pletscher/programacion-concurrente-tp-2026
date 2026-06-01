@@ -1,0 +1,23 @@
+#include "Paquete.h"
+
+Paquete::Paquete(int id, int prioridad)
+{
+    this->id = id;
+    this->prioridad = prioridad;
+    this->fechaCreacion = std::chrono::steady_clock::now();
+}
+
+int Paquete::getId() const
+{
+    return id;
+}
+
+int Paquete::getPrioridad() const
+{
+    return prioridad;
+}
+
+std::chrono::steady_clock::time_point Paquete::getFechaCreacion() const
+{
+    return fechaCreacion;
+}

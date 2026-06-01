@@ -1,0 +1,25 @@
+# depslib dependency file v1.0
+1780278347 source:c:\codeblocks\sistemalogistico\main.cpp
+	<iostream>
+	"WaitingQueue.h"
+
+1780273409 c:\codeblocks\sistemalogistico\paquete.h
+	<chrono>
+
+1780273435 source:c:\codeblocks\sistemalogistico\paquete.cpp
+	"Paquete.h"
+
+1780278165 source:c:\codeblocks\sistemalogistico\waitingqueue.cpp
+	"WaitingQueue.h"
+
+1780278140 c:\codeblocks\sistemalogistico\waitingqueue.h
+	<queue>
+	"Paquete.h"
+
+1780273409 source:c:\codeblocks\sistemalogistico\paquete.h
+	<chrono>
+
+1780278140 source:c:\codeblocks\sistemalogistico\waitingqueue.h
+	<queue>
+	"Paquete.h"
+
