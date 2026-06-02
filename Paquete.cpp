@@ -21,3 +21,9 @@ std::chrono::steady_clock::time_point Paquete::getFechaCreacion() const
 {
     return fechaCreacion;
 }
+std::chrono::steady_clock::time_point Paquete::getIngresoCinta() const{
+    return ingresoCinta;
+}
+void Paquete::setIngresoCinta(std::chrono::steady_clock::time_point nuevoIngresoCinta){
+    ingresoCinta = nuevoIngresoCinta;
+}

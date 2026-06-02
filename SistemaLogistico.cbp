@@ -32,6 +32,14 @@
 			<Add option="-Wall" />
 			<Add option="-fexceptions" />
 		</Compiler>
+		<Unit filename="Paquete.cpp" />
+		<Unit filename="Paquete.h" />
+		<Unit filename="ProcessingQueue.cpp" />
+		<Unit filename="ProcessingQueue.h" />
+		<Unit filename="Semaforo.cpp" />
+		<Unit filename="Semaforo.h" />
+		<Unit filename="WaitingQueue.cpp" />
+		<Unit filename="WaitingQueue.h" />
 		<Unit filename="main.cpp" />
 		<Extensions>
 			<lib_finder disable_auto="1" />
