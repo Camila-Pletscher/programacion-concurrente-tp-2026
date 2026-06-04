@@ -19,9 +19,11 @@ int productoresFinalizados = 0;
 mutex mtx_productores;
 
 // Configuración de la simulación
-int cantidadProductores = 1;
-int cantidadConsumidores = 2;
-int paquetesTotales = 20;
+int cantidadProductores;
+int cantidadConsumidores;
+int paquetesTotales;
+int consumidos = 0;
+int escenario;
 
 // Semáforos de sincronización
 Semaforo hay_paquetes_waiting; // paquetes disponibles en WaitingQueue
@@ -32,7 +34,8 @@ Semaforo hay_paquetes_cinta;   // paquetes disponibles en ProcessingQueue
 mutex mtx_waiting;     // protege WaitingQueue
 mutex mtx_processing;  // protege ProcessingQueue
 mutex mtx_contador;    // protege contador_global
-
+mutex mtx_consumidos;  // protege contador_consumidos;
+mutex mtx_cout;        // protege impresiones por consola;
 // Generador de IDs únicos para los paquetes
 int contador_global = 0;
 
@@ -45,10 +48,44 @@ int main()
 
     vector<thread> productores;
     vector<thread> consumidores;
+    int configuracion;
+    cout << " ========== CONFIGURACION ==========" << endl;
+    cout << " - Configuracion A: 1 Productor y 2 Consumidores" << endl;
+    cout << " - Configuracion B: 3 Productores y 1 consumidor" << endl;
+    cout << " - Configuracion C: 3 Productores y 3 Consumidores" << endl;
+    cout << "Seleccione configuracion (1 al 3): ";
+    while(!(cin>>configuracion)){
+        cout << "Valor no valido, ingrese nuevamente: ";
+        cin.clear();
+        cin.ignore(10000, '\n');
+    }
+    switch(configuracion) {
+        case 1: cantidadProductores = 1; cantidadConsumidores = 2; break;
+        case 2: cantidadProductores = 3; cantidadConsumidores = 1; break;
+        case 3: cantidadProductores = 3; cantidadConsumidores = 3; break;
+    }
+    cout << " \n========== ESCENARIO ==========" << endl;
+    cout << "1 - Carga masiva (1550 paquetes)" << endl;
+    cout << "2 - Vacuidad (0 paquetes)" << endl;
+    cout << "3 - Saturacion (8 paquetes alta prioridad)" << endl;
+    cout << "4 - Anti-starvation" << endl;
+    cout << "Seleccione escenario (1 al 4): ";
+    while(!(cin >> escenario)){
+        cout << "Valor no valido, ingrese nuevamente: ";
+        cin.clear();
+        cin.ignore(10000, '\n');
+    }
+
+    switch(escenario){
+        case 1: paquetesTotales = 1550; break;
+        case 2: paquetesTotales = 0; break;
+        case 3: paquetesTotales = 8; break;
+        case 4: paquetesTotales = 50; break;
+    }
 
     // Cantidad de paquetes que producirá cada productor
     int paquetesPorProductor = paquetesTotales / cantidadProductores;
-
+    int resto = paquetesTotales % cantidadProductores;
 // Inicialización de semáforos
     init(hay_paquetes_waiting,0); // inicialmente no hay paquetes esperando
     init(hay_espacio_cinta,5);    // la cinta tiene 5 espacios libres
@@ -61,10 +98,11 @@ int main()
     //Creador de productores segun config
     for(int i=0; i<cantidadProductores; i++)
     {
+        int extra = (i == 0) ? resto : 0;
         productores.emplace_back(
             productor,
             ref(waiting),
-            paquetesPorProductor
+            paquetesPorProductor + extra
         );
     }
 
@@ -110,7 +148,15 @@ void productor (WaitingQueue& waiting, int cantPaquetes)
         contador_global++; // incrementa en 1 el contador_global
         mtx_contador.unlock(); //libera la variable contador_global
 
-        Paquete p(id,rand()%2); //le asigna a paquete el id y un numero randome en 1 y 0
+        int prioridad;
+        if(escenario == 3){                 //Este fragmento maneja los escenarios
+            prioridad = 1;                  //En el escenario 3 son todos de alta prioridad
+        } else if(escenario == 4){          //En el escenario 4 el primero es de baja prioridad y
+            prioridad = (id == 0) ? 0 : 1;  //y el resto de alta prioridad;
+        }else{
+            prioridad = rand() % 2;
+        }
+        Paquete p(id,prioridad); //le asigna a paquete el id y un numero randome en 1 y 0
 
         std::this_thread::sleep_for(std::chrono::milliseconds(90)); //espera 90 milisegundos
         mtx_waiting.lock(); //bloquea el waiting (estanteria)
@@ -118,12 +164,13 @@ void productor (WaitingQueue& waiting, int cantPaquetes)
         mtx_waiting.unlock(); // libera el waiting
 
         signal(hay_paquetes_waiting); // avisa que hay un nuevo paquete disponible en WaitingQueue
-
+        mtx_cout.lock();
         cout << "[PRODUCTOR] Generado paquete "
              << p.getId()
              << " prioridad "
              << p.getPrioridad()
              << endl;
+        mtx_cout.unlock();
     }
 
     mtx_productores.lock();
@@ -136,9 +183,10 @@ void productor (WaitingQueue& waiting, int cantPaquetes)
         produccionFinalizada = true;
 
         signal(hay_paquetes_waiting); //despierta al despachador por si estaba dormido
-
+        mtx_cout.lock();
         cout << "\n[INFO] Produccion finalizada\n"
              << endl;
+        mtx_cout.unlock();
     }
 
     mtx_productores.unlock();
@@ -150,21 +198,22 @@ void despachador(WaitingQueue& waiting, ProcessingQueue& processing)
     while(true)
     {
         wait(hay_paquetes_waiting); //espera si no hay paquetes en el waiting consume 1 permiso del semáforo
+
         mtx_waiting.lock();
-
         bool waitingVacia = waiting.vacia();
-
         mtx_waiting.unlock();
+
         if(produccionFinalizada && // Si ya no habrá más paquetes y WaitingQueue quedó vacía, el despachador puede finalizar.
                 waitingVacia)
         {
-            for(int i = 0; i < cantidadConsumidores; i++)
-            {
-                signal(hay_paquetes_cinta); // Despierta a todos los consumidores para que puedan verificar la condición de finalización.
+
+            for(int i = 0; i < cantidadConsumidores; i++) {
+                signal(hay_paquetes_cinta);
             }
+            mtx_cout.lock();
             cout << "\n[INFO] Despachador finalizado\n"
                  << endl;
-
+            mtx_cout.unlock();
 
             break;
         }
@@ -183,11 +232,12 @@ void despachador(WaitingQueue& waiting, ProcessingQueue& processing)
         signal(hay_paquetes_cinta); //avisa que hay un nuevo paquete en la cinta
 
         std::this_thread::sleep_for(std::chrono::milliseconds(420)); //espera 420ms
-
+        mtx_cout.lock();
         cout << "[DESPACHADOR] Enviado paquete "
              << p.getId()
              << " a ProcessingQueue"
              << endl;
+        mtx_cout.unlock();
     }
 }
 
@@ -199,38 +249,38 @@ void consumidor(ProcessingQueue& processing)
         wait(hay_paquetes_cinta);
 
         mtx_processing.lock();
-
-        if(produccionFinalizada && // Si la producción terminó y ya no quedan paquetes en ProcessingQueue, este consumidor puede finalizar.
-                processing.vacia())
-        {
+        // Verificamos condición de salida ANTES de intentar obtener paquete
+        if(processing.vacia() &&
+           produccionFinalizada &&
+           consumidos == paquetesTotales) {
             mtx_processing.unlock();
-
-            cout << "[INFO] Consumidor finalizado"
-                 << endl;
-
+            mtx_cout.lock();
+            cout << "[INFO] Consumidor finalizado" << endl;
+            mtx_cout.unlock();
             break;
         }
 
         Paquete p = processing.obtenerPaquete();
-
         mtx_processing.unlock();
 
-        auto tiempoEnCinta =std::chrono::steady_clock::now() - p.getIngresoCinta();//calcula cuánto tiempo lleva el paquete dentro de la ProcessingQueue
+        auto tiempoEnCinta = std::chrono::steady_clock::now() - p.getIngresoCinta();
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(tiempoEnCinta).count();
 
-        auto ms = std::chrono::duration_cast <std::chrono::milliseconds>(tiempoEnCinta).count();//convierte el tiempo transcurrido a milisegundos
-
-        if(ms < 550)// garantiza que el paquete permanezca al menos 550 ms en la cinta
-        {
+        if(ms < 550) {
             std::this_thread::sleep_for(std::chrono::milliseconds(550 - ms));
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(270)); // simula el tiempo de procesamiento del paquete
+        std::this_thread::sleep_for(std::chrono::milliseconds(270)); // simula procesamiento
 
-        signal(hay_espacio_cinta);// libera un espacio de la cinta
+        signal(hay_espacio_cinta); // libera espacio en la cinta
 
-        cout // muestra qué paquete terminó de procesarse
-                << "Procesado paquete "
-                << p.getId()
-                << endl;
+        mtx_consumidos.lock();
+        consumidos++;
+        bool esUltimo = (produccionFinalizada && consumidos == paquetesTotales);
+        mtx_consumidos.unlock();
+
+        mtx_cout.lock();
+        cout << "Procesado paquete " << p.getId() << endl;
+        mtx_cout.unlock();
     }
 }

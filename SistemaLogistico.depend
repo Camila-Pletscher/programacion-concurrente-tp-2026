@@ -88,3 +88,42 @@
 	<mutex>
 	<condition_variable>
 
+1780441488 source:c:\users\alan\programacion-concurrente-tp-2026\paquete.cpp
+	"Paquete.h"
+
+1780540570 c:\users\alan\programacion-concurrente-tp-2026\paquete.h
+	<chrono>
+
+1780441488 source:c:\users\alan\programacion-concurrente-tp-2026\semaforo.cpp
+	"Semaforo.h"
+	<iostream>
+
+1780441488 c:\users\alan\programacion-concurrente-tp-2026\semaforo.h
+	<mutex>
+	<condition_variable>
+
+1780540570 source:c:\users\alan\programacion-concurrente-tp-2026\processingqueue.cpp
+	"ProcessingQueue.h"
+
+1780540570 c:\users\alan\programacion-concurrente-tp-2026\processingqueue.h
+	<queue>
+	"Paquete.h"
+
+1780540570 source:c:\users\alan\programacion-concurrente-tp-2026\waitingqueue.cpp
+	"WaitingQueue.h"
+
+1780540570 c:\users\alan\programacion-concurrente-tp-2026\waitingqueue.h
+	"Paquete.h"
+	<queue>
+	<chrono>
+
+1780547312 source:c:\users\alan\programacion-concurrente-tp-2026\main.cpp
+	<iostream>
+	"WaitingQueue.h"
+	"ProcessingQueue.h"
+	"Semaforo.h"
+	<mutex>
+	<thread>
+	<chrono>
+	<vector>
+
