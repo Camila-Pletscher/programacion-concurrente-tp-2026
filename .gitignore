@@ -67,3 +67,26 @@ vcpkg_installed/
 # test output & cache
 Testing/
 .cache/
+
+# CodeBlocks
+*.layout
+*.depend
+
+# Archivos compilados
+*.o
+*.obj
+*.exe
+*.out
+
+# Directorios de compilación
+bin/
+obj/
+
+# Archivos temporales
+*.log
+
+# VS Code
+.vscode/
+
+# Windows
+Thumbs.db
