@@ -9,6 +9,14 @@
 
 using namespace std;
 
+long long esperaTotalAlta = 0;
+long long esperaTotalBaja = 0;
+
+int cantidadAlta = 0;
+int cantidadBaja = 0;
+
+mutex mtx_metricas;
+
 // Indica si todos los productores ya terminaron de generar paquetes
 bool produccionFinalizada = false;
 
@@ -59,15 +67,26 @@ int main()
     cout << " - Configuracion B: 3 Productores y 1 consumidor" << endl;
     cout << " - Configuracion C: 3 Productores y 3 Consumidores" << endl;
     cout << "Seleccione configuracion (1 al 3): ";
-    while(!(cin>>configuracion)){
+    while(!(cin>>configuracion))
+    {
         cout << "Valor no valido, ingrese nuevamente: ";
         cin.clear();
         cin.ignore(10000, '\n');
     }
-    switch(configuracion) {
-        case 1: cantidadProductores = 1; cantidadConsumidores = 2; break;
-        case 2: cantidadProductores = 3; cantidadConsumidores = 1; break;
-        case 3: cantidadProductores = 3; cantidadConsumidores = 3; break;
+    switch(configuracion)
+    {
+    case 1:
+        cantidadProductores = 1;
+        cantidadConsumidores = 2;
+        break;
+    case 2:
+        cantidadProductores = 3;
+        cantidadConsumidores = 1;
+        break;
+    case 3:
+        cantidadProductores = 3;
+        cantidadConsumidores = 3;
+        break;
     }
     cout << " \n========== ESCENARIO ==========" << endl;
     cout << "1 - Carga masiva (1550 paquetes)" << endl;
@@ -75,17 +94,27 @@ int main()
     cout << "3 - Saturacion (8 paquetes alta prioridad)" << endl;
     cout << "4 - Anti-starvation" << endl;
     cout << "Seleccione escenario (1 al 4): ";
-    while(!(cin >> escenario)){
+    while(!(cin >> escenario))
+    {
         cout << "Valor no valido, ingrese nuevamente: ";
         cin.clear();
         cin.ignore(10000, '\n');
     }
 
-    switch(escenario){
-        case 1: paquetesTotales = 1550; break;
-        case 2: paquetesTotales = 0; break;
-        case 3: paquetesTotales = 8; break;
-        case 4: paquetesTotales = 50; break;
+    switch(escenario)
+    {
+    case 1:
+        paquetesTotales = 1550;
+        break;
+    case 2:
+        paquetesTotales = 0;
+        break;
+    case 3:
+        paquetesTotales = 8;
+        break;
+    case 4:
+        paquetesTotales = 50;
+        break;
     }
 
     // Cantidad de paquetes que producirá cada productor
@@ -137,6 +166,36 @@ int main()
         c.join();
     }
 
+    cout << "\n========== METRICAS ==========\n";
+
+    cout << "Paquetes producidos: "
+         << contador_global
+         << endl;
+
+    if(cantidadAlta > 0)
+    {
+        cout << "Espera promedio prioridad ALTA: "
+             << (esperaTotalAlta / cantidadAlta)
+             << " ms"
+             << endl;
+    }
+    else
+    {
+        cout << "No se producieron paquetes de prioridad ALTA";
+    }
+
+    if(cantidadBaja > 0)
+    {
+        cout << "Espera promedio prioridad BAJA: "
+             << (esperaTotalBaja / cantidadBaja)
+             << " ms"
+             << endl;
+    }
+    else
+    {
+        cout << "No se producieron paquetes de prioridad BAJA";
+    }
+
 
 
     return 0;
@@ -154,11 +213,16 @@ void productor (WaitingQueue& waiting, int cantPaquetes)
         mtx_contador.unlock(); //libera la variable contador_global
 
         int prioridad;
-        if(escenario == 3){                 //Este fragmento maneja los escenarios
+        if(escenario == 3)                  //Este fragmento maneja los escenarios
+        {
             prioridad = 1;                  //En el escenario 3 son todos de alta prioridad
-        } else if(escenario == 4){          //En el escenario 4 el primero es de baja prioridad y
+        }
+        else if(escenario == 4)             //En el escenario 4 el primero es de baja prioridad y
+        {
             prioridad = (id == 0) ? 0 : 1;  //y el resto de alta prioridad;
-        }else{
+        }
+        else
+        {
             prioridad = rand() % 2;
         }
         Paquete p(id,prioridad); //le asigna a paquete el id y un numero randome en 1 y 0
@@ -169,13 +233,6 @@ void productor (WaitingQueue& waiting, int cantPaquetes)
         mtx_waiting.unlock(); // libera el waiting
 
         signal(hay_paquetes_waiting); // avisa que hay un nuevo paquete disponible en WaitingQueue
-        mtx_cout.lock();
-        cout << "[PRODUCTOR] Generado paquete "
-             << p.getId()
-             << " prioridad "
-             << p.getPrioridad()
-             << endl;
-        mtx_cout.unlock();
     }
 
     mtx_productores.lock();
@@ -211,8 +268,10 @@ void despachador(WaitingQueue& waiting, ProcessingQueue& processing)
         if(produccionFinalizada && // Si ya no habrá más paquetes y WaitingQueue quedó vacía, el despachador puede finalizar.
                 waitingVacia)
         {
-            if(escenario == 2){
-                for(int i = 0; i < cantidadConsumidores; i++){
+            if(escenario == 2)
+            {
+                for(int i = 0; i < cantidadConsumidores; i++)
+                {
                     signal(hay_paquetes_cinta);
 
                 }
@@ -230,6 +289,26 @@ void despachador(WaitingQueue& waiting, ProcessingQueue& processing)
         Paquete p = waiting.obtenerSiguientePaquete(); //asigna el siguiente paquete
         mtx_waiting.unlock(); //sale de la seccion critica apra que otro accede
 
+        //ahora menos cuando se creo
+        auto tiempoEspera = std::chrono::steady_clock::now() - p.getFechaCreacion();
+
+        long long msEspera = std::chrono::duration_cast<std::chrono::milliseconds>(tiempoEspera).count();
+
+        mtx_metricas.lock();
+
+        if(p.getPrioridad() == 1)
+        {
+            esperaTotalAlta += msEspera;
+            cantidadAlta++;
+        }
+        else
+        {
+            esperaTotalBaja += msEspera;
+            cantidadBaja++;
+        }
+
+        mtx_metricas.unlock();
+
         p.setIngresoCinta(std::chrono::steady_clock::now()); // registra el instante en que el paquete entra a la cinta(guarda marca detiempo)
 
         mtx_processing.lock(); //accede a la seccion critica del processing
@@ -239,12 +318,6 @@ void despachador(WaitingQueue& waiting, ProcessingQueue& processing)
         signal(hay_paquetes_cinta); //avisa que hay un nuevo paquete en la cinta
 
         std::this_thread::sleep_for(std::chrono::milliseconds(T_DESPACHO)); //espera 420ms
-        mtx_cout.lock();
-        cout << "[DESPACHADOR] Enviado paquete "
-             << p.getId()
-             << " a ProcessingQueue"
-             << endl;
-        mtx_cout.unlock();
     }
 }
 
@@ -258,8 +331,9 @@ void consumidor(ProcessingQueue& processing)
         mtx_processing.lock();
         // Verificamos condición de salida ANTES de intentar obtener paquete
         if(processing.vacia() &&
-           produccionFinalizada &&
-           consumidos == paquetesTotales) {
+                produccionFinalizada &&
+                consumidos == paquetesTotales)
+        {
             mtx_processing.unlock();
             mtx_cout.lock();
             cout << "[INFO] Consumidor finalizado" << endl;
@@ -273,7 +347,8 @@ void consumidor(ProcessingQueue& processing)
         auto tiempoEnCinta = std::chrono::steady_clock::now() - p.getIngresoCinta();
         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(tiempoEnCinta).count();
 
-        if(ms < T_CINTA) {
+        if(ms < T_CINTA)
+        {
             std::this_thread::sleep_for(std::chrono::milliseconds(T_CINTA - ms));
         }
 
@@ -285,17 +360,16 @@ void consumidor(ProcessingQueue& processing)
         consumidos++;
         bool esUltimo = (produccionFinalizada && consumidos == paquetesTotales);
         mtx_consumidos.unlock();
-        if(esUltimo){
-            for(int i = 0; i < cantidadConsumidores - 1; i++) {
+        if(esUltimo)
+        {
+            for(int i = 0; i < cantidadConsumidores - 1; i++)
+            {
                 signal(hay_paquetes_cinta);
             }
-                mtx_cout.lock();
-                cout << "[INFO] Consumidor finalizado" << endl;
-                mtx_cout.unlock();
-                break;
+            mtx_cout.lock();
+            cout << "[INFO] Consumidor finalizado" << endl;
+            mtx_cout.unlock();
+            break;
         }
-        mtx_cout.lock();
-        cout << "Procesado paquete " << p.getId() << endl;
-        mtx_cout.unlock();
     }
 }
