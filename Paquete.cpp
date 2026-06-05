@@ -27,3 +27,7 @@ std::chrono::steady_clock::time_point Paquete::getIngresoCinta() const{
 void Paquete::setIngresoCinta(std::chrono::steady_clock::time_point nuevoIngresoCinta){
     ingresoCinta = nuevoIngresoCinta;
 }
+long long Paquete::getTiempoEsperaMs() const{
+    auto tiempoEspera = std::chrono::steady_clock::now() - fechaCreacion;
+    return std::chrono::duration_cast<std::chrono::milliseconds>(tiempoEspera).count();
+}

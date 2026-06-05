@@ -22,6 +22,7 @@ public:
     std::chrono::steady_clock::time_point getIngresoCinta() const;
     void setIngresoCinta(std::chrono::steady_clock::time_point nuevoIngresoCinta);
 
+    long long getTiempoEsperaMs() const;
 };
 
 #endif

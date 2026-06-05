@@ -12,13 +12,13 @@ using namespace std;
 // Indica si todos los productores ya terminaron de generar paquetes
 bool produccionFinalizada = false;
 
-// Cuenta cu·ntos productores terminaron
+// Cuenta cu√°ntos productores terminaron
 int productoresFinalizados = 0;
 
-// Protege las variables de finalizaciÛn
+// Protege las variables de finalizaci√≥n
 mutex mtx_productores;
 
-// ConfiguraciÛn de la simulaciÛn
+// Configuraci√≥n de la simulaci√≥n
 int cantidadProductores;
 int cantidadConsumidores;
 int paquetesTotales;
@@ -30,19 +30,26 @@ const int T_WAITING = 90; // 9ms -> 90ms
 const int T_DESPACHO = 420; // 42ms -> 420ms
 const int T_CINTA = 550; // 55ms -> 550ms
 const int T_CONSUMO = 270; // 27ms -> 270ms
-// Sem·foros de sincronizaciÛn
+// Sem√°foros de sincronizaci√≥n
 Semaforo hay_paquetes_waiting; // paquetes disponibles en WaitingQueue
 Semaforo hay_espacio_cinta;    // espacios libres en ProcessingQueue
 Semaforo hay_paquetes_cinta;   // paquetes disponibles en ProcessingQueue
 
-// Mutex de exclusiÛn mutua
+// Mutex de exclusi√≥n mutua
 mutex mtx_waiting;     // protege WaitingQueue
 mutex mtx_processing;  // protege ProcessingQueue
 mutex mtx_contador;    // protege contador_global
 mutex mtx_consumidos;  // protege contador_consumidos;
 mutex mtx_cout;        // protege impresiones por consola;
-// Generador de IDs ˙nicos para los paquetes
+// Generador de IDs √∫nicos para los paquetes
 int contador_global = 0;
+
+// Metricas de tiempo de espera por prioridad
+mutex mtx_metricas;
+long long tiempoEsperaAltaTotal = 0;
+long long tiempoEsperaBajaTotal = 0;
+int cantidadAltaProcesada = 0;
+int cantidadBajaProcesada = 0;
 
 void productor (WaitingQueue& waiting, int cantPaquetes);
 void despachador(WaitingQueue& waiting, ProcessingQueue& processing);
@@ -88,10 +95,10 @@ int main()
         case 4: paquetesTotales = 50; break;
     }
 
-    // Cantidad de paquetes que producir· cada productor
+    // Cantidad de paquetes que producir√° cada productor
     int paquetesPorProductor = paquetesTotales / cantidadProductores;
     int resto = paquetesTotales % cantidadProductores;
-// InicializaciÛn de sem·foros
+// Inicializaci√≥n de sem√°foros
     init(hay_paquetes_waiting,0); // inicialmente no hay paquetes esperando
     init(hay_espacio_cinta,5);    // la cinta tiene 5 espacios libres
     init(hay_paquetes_cinta,0);   // inicialmente no hay paquetes en la cinta
@@ -137,7 +144,33 @@ int main()
         c.join();
     }
 
+    // Metricas finales
+    cout << "\n===== METRICAS FINALES =====" << endl;
+    cout << "Paquetes producidos totales: " << contador_global << endl;
 
+    if(cantidadAltaProcesada > 0)
+    {
+        cout << "Tiempo promedio de espera [ALTA prioridad]: "
+             << (tiempoEsperaAltaTotal / cantidadAltaProcesada)
+             << " ms (" << cantidadAltaProcesada << " paquetes)" << endl;
+    }
+    else
+    {
+        cout << "Tiempo promedio de espera [ALTA prioridad]: sin paquetes" << endl;
+    }
+
+    if(cantidadBajaProcesada > 0)
+    {
+        cout << "Tiempo promedio de espera [BAJA prioridad]: "
+             << (tiempoEsperaBajaTotal / cantidadBajaProcesada)
+             << " ms (" << cantidadBajaProcesada << " paquetes)" << endl;
+    }
+    else
+    {
+        cout << "Tiempo promedio de espera [BAJA prioridad]: sin paquetes" << endl;
+    }
+
+    cout << "============================" << endl;
 
     return 0;
 }
@@ -202,13 +235,13 @@ void despachador(WaitingQueue& waiting, ProcessingQueue& processing)
 {
     while(true)
     {
-        wait(hay_paquetes_waiting); //espera si no hay paquetes en el waiting consume 1 permiso del sem·foro
+        wait(hay_paquetes_waiting); //espera si no hay paquetes en el waiting consume 1 permiso del sem√°foro
 
         mtx_waiting.lock();
         bool waitingVacia = waiting.vacia();
         mtx_waiting.unlock();
 
-        if(produccionFinalizada && // Si ya no habr· m·s paquetes y WaitingQueue quedÛ vacÌa, el despachador puede finalizar.
+        if(produccionFinalizada && // Si ya no habr√° ms paquetes y WaitingQueue qued√≥ vac√≠a, el despachador puede finalizar.
                 waitingVacia)
         {
             if(escenario == 2){
@@ -229,6 +262,21 @@ void despachador(WaitingQueue& waiting, ProcessingQueue& processing)
         mtx_waiting.lock(); //accede a la seccion critica del waiting
         Paquete p = waiting.obtenerSiguientePaquete(); //asigna el siguiente paquete
         mtx_waiting.unlock(); //sale de la seccion critica apra que otro accede
+
+        // Acumula el tiempo que el paquete estuvo en WaitingQueue para las metricas finales
+        long long espera = p.getTiempoEsperaMs();
+        mtx_metricas.lock();
+        if(p.getPrioridad() == 1)
+        {
+            tiempoEsperaAltaTotal += espera;
+            cantidadAltaProcesada++;
+        }
+        else
+        {
+            tiempoEsperaBajaTotal += espera;
+            cantidadBajaProcesada++;
+        }
+        mtx_metricas.unlock();
 
         p.setIngresoCinta(std::chrono::steady_clock::now()); // registra el instante en que el paquete entra a la cinta(guarda marca detiempo)
 
@@ -256,7 +304,7 @@ void consumidor(ProcessingQueue& processing)
         wait(hay_paquetes_cinta);
 
         mtx_processing.lock();
-        // Verificamos condiciÛn de salida ANTES de intentar obtener paquete
+        // Verificamos condici√≥n de salida ANTES de intentar obtener paquete
         if(processing.vacia() &&
            produccionFinalizada &&
            consumidos == paquetesTotales) {
