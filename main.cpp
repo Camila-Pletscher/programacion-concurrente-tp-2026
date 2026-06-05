@@ -181,7 +181,7 @@ int main()
     }
     else
     {
-        cout << "No se producieron paquetes de prioridad ALTA";
+        cout << "No se producieron paquetes de prioridad ALTA"<< endl;
     }
 
     if(cantidadBaja > 0)
@@ -193,7 +193,7 @@ int main()
     }
     else
     {
-        cout << "No se producieron paquetes de prioridad BAJA";
+        cout << "No se producieron paquetes de prioridad BAJA"<< endl;
     }
 
 
