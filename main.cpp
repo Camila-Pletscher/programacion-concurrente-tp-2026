@@ -217,9 +217,9 @@ void productor (WaitingQueue& waiting, int cantPaquetes)
         {
             prioridad = 1;                  //En el escenario 3 son todos de alta prioridad
         }
-        else if(escenario == 4)             //En el escenario 4 el primero es de baja prioridad y
+        else if(escenario == 4)             //En el escenario 4, 1 de baja prioridad - lo ponemos en el medio
         {
-            prioridad = (id == 0) ? 0 : 1;  //y el resto de alta prioridad;
+            prioridad = (id == 25) ? 0 : 1;  //y el resto de alta prioridad;
         }
         else
         {
