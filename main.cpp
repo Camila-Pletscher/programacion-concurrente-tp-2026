@@ -25,6 +25,11 @@ int paquetesTotales;
 int consumidos = 0;
 int escenario;
 
+// Tiempos de espera
+const int T_WAITING = 90; // 9ms -> 90ms
+const int T_DESPACHO = 420; // 42ms -> 420ms
+const int T_CINTA = 550; // 55ms -> 550ms
+const int T_CONSUMO = 270; // 27ms -> 270ms
 // Semáforos de sincronización
 Semaforo hay_paquetes_waiting; // paquetes disponibles en WaitingQueue
 Semaforo hay_espacio_cinta;    // espacios libres en ProcessingQueue
@@ -158,7 +163,7 @@ void productor (WaitingQueue& waiting, int cantPaquetes)
         }
         Paquete p(id,prioridad); //le asigna a paquete el id y un numero randome en 1 y 0
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(90)); //espera 90 milisegundos
+        std::this_thread::sleep_for(std::chrono::milliseconds(T_WAITING)); //espera 90 milisegundos
         mtx_waiting.lock(); //bloquea el waiting (estanteria)
         waiting.agregarPaquete(p); //agrega el paquete a la estanteria
         mtx_waiting.unlock(); // libera el waiting
@@ -206,9 +211,11 @@ void despachador(WaitingQueue& waiting, ProcessingQueue& processing)
         if(produccionFinalizada && // Si ya no habrá más paquetes y WaitingQueue quedó vacía, el despachador puede finalizar.
                 waitingVacia)
         {
+            if(escenario == 2){
+                for(int i = 0; i < cantidadConsumidores; i++){
+                    signal(hay_paquetes_cinta);
 
-            for(int i = 0; i < cantidadConsumidores; i++) {
-                signal(hay_paquetes_cinta);
+                }
             }
             mtx_cout.lock();
             cout << "\n[INFO] Despachador finalizado\n"
@@ -231,7 +238,7 @@ void despachador(WaitingQueue& waiting, ProcessingQueue& processing)
 
         signal(hay_paquetes_cinta); //avisa que hay un nuevo paquete en la cinta
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(420)); //espera 420ms
+        std::this_thread::sleep_for(std::chrono::milliseconds(T_DESPACHO)); //espera 420ms
         mtx_cout.lock();
         cout << "[DESPACHADOR] Enviado paquete "
              << p.getId()
@@ -266,11 +273,11 @@ void consumidor(ProcessingQueue& processing)
         auto tiempoEnCinta = std::chrono::steady_clock::now() - p.getIngresoCinta();
         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(tiempoEnCinta).count();
 
-        if(ms < 550) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(550 - ms));
+        if(ms < T_CINTA) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(T_CINTA - ms));
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(270)); // simula procesamiento
+        std::this_thread::sleep_for(std::chrono::milliseconds(T_CONSUMO)); // simula procesamiento
 
         signal(hay_espacio_cinta); // libera espacio en la cinta
 
@@ -278,7 +285,15 @@ void consumidor(ProcessingQueue& processing)
         consumidos++;
         bool esUltimo = (produccionFinalizada && consumidos == paquetesTotales);
         mtx_consumidos.unlock();
-
+        if(esUltimo){
+            for(int i = 0; i < cantidadConsumidores - 1; i++) {
+                signal(hay_paquetes_cinta);
+            }
+                mtx_cout.lock();
+                cout << "[INFO] Consumidor finalizado" << endl;
+                mtx_cout.unlock();
+                break;
+        }
         mtx_cout.lock();
         cout << "Procesado paquete " << p.getId() << endl;
         mtx_cout.unlock();
